@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 
-Created by Josue, 2025
+Created by Josue,Ryan and Samy 2025
 """
 
 
@@ -268,7 +268,7 @@ def main_menu():
         diff_text = menu_font.render("Press [D] for Difficulty", True, WHITE)
         quit_text = menu_font.render("Press [Q] to Quit", True, WHITE)
         credits   = small_font.render(
-            "Created by Josue • Intro to Computing Fundamentals",
+            "Created by Josue, Ryan and Samy",
             True, WHITE
         )
 
@@ -374,6 +374,7 @@ def end_screen(result, difficulty):
 # --------------------------------------------------
 # Game loop with difficulty
 # --------------------------------------------------
+
 def play_game(difficulty):
     # Configure settings based on difficulty
     if difficulty == "easy":
@@ -381,15 +382,17 @@ def play_game(difficulty):
         ball_speed   = 4
         paddle_width = 140
     elif difficulty == "medium":
-        rows, cols   = 7, 11
-        ball_speed   = 6
+        rows, cols   = 8, 10   # more bricks
+        ball_speed   = 5
         paddle_width = 120
     else:  # hard
-        rows, cols   = 10, 15
-        ball_speed   = 7
+        rows, cols   = 10, 12  # a lot of bricks
+        ball_speed   = 6
         paddle_width = 90
 
-    paddle = Paddle(WIDTH // 2 - paddle_width // 2, HEIGHT - 40, paddle_width, 15, 15, WHITE)
+    paddle = Paddle(WIDTH // 2 - paddle_width // 2,
+                    HEIGHT - 40,
+                    paddle_width, 15, 10, WHITE)
 
     # multiple balls support
     balls = [Ball(WIDTH // 2, HEIGHT // 2, 10, RED, ball_speed, -ball_speed)]
@@ -397,53 +400,63 @@ def play_game(difficulty):
     bricks = create_bricks(rows, cols)
     powerups = []
     lives = 3
+    paused = False   # pause flag
 
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit(); sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p:
+                    paused = not paused           # toggle pause
+                # NEW: from pause, go back to main menu
+                if paused and event.key == pygame.K_m:
+                    return "menu"
 
         keys = pygame.key.get_pressed()
-        paddle.move(keys)
 
-        # update all balls
-        for ball in balls:
-            ball.move()
-            ball.bounce_walls()
-            ball.bounce_paddle(paddle)
-            ball.collide_bricks(bricks, powerups)
+        # ---------- UPDATE GAME ONLY IF NOT PAUSED ----------
+        if not paused:
+            paddle.move(keys)
 
-        # Move powerups
-        for p in powerups:
-            p.move()
+            # update all balls
+            for ball in balls:
+                ball.move()
+                ball.bounce_walls()
+                ball.bounce_paddle(paddle)
+                ball.collide_bricks(bricks, powerups)
 
-        # Check powerup collisions with paddle / off-screen
-        for p in powerups[:]:
-            if (paddle.y <= p.y + p.height // 2 <= paddle.y + paddle.height and
-                paddle.x <= p.x <= paddle.x + paddle.width):
-                lives = p.apply_effect(paddle, balls, lives)
-                powerups.remove(p)
-            elif p.y - p.height // 2 > HEIGHT:
-                powerups.remove(p)
+            # Move powerups
+            for p in powerups:
+                p.move()
 
-        # Lose condition: balls that fall below
-        for ball in balls[:]:
-            if ball.y - ball.radius > HEIGHT:
-                balls.remove(ball)
+            # Check powerup collisions with paddle / off-screen
+            for p in powerups[:]:
+                if (paddle.y <= p.y + p.height // 2 <= paddle.y + paddle.height and
+                    paddle.x <= p.x <= paddle.x + paddle.width):
+                    lives = p.apply_effect(paddle, balls, lives)
+                    powerups.remove(p)
+                elif p.y - p.height // 2 > HEIGHT:
+                    powerups.remove(p)
 
-        if not balls:
-            lives -= 1
-            if lives <= 0:
-                return "lose"
-            else:
-                # reset to a single ball at center
-                balls.append(Ball(WIDTH // 2, HEIGHT // 2, 10, RED, ball_speed, -ball_speed))
+            # Lose condition: balls that fall below
+            for ball in balls[:]:
+                if ball.y - ball.radius > HEIGHT:
+                    balls.remove(ball)
 
-        # Win condition: all bricks gone
-        if all(not b.visible for b in bricks):
-            return "win"
+            if not balls:
+                lives -= 1
+                if lives <= 0:
+                    return "lose"
+                else:
+                    # reset to a single ball at center
+                    balls.append(Ball(WIDTH // 2, HEIGHT // 2, 10, RED, ball_speed, -ball_speed))
 
-        # Drawing
+            # Win condition: all bricks gone
+            if all(not b.visible for b in bricks):
+                return "win"
+
+        # ---------- DRAW (ALWAYS, EVEN WHEN PAUSED) ----------
         draw_gradient_background()
         for b in bricks:
             b.draw()
@@ -457,12 +470,32 @@ def play_game(difficulty):
         lives_text = small_font.render(f"Lives: {lives}", True, WHITE)
         diff_text  = small_font.render(f"Difficulty: {difficulty.capitalize()}", True, WHITE)
         balls_text = small_font.render(f"Balls: {len(balls)}", True, WHITE)
+        pause_hint = small_font.render("P: pause/resume", True, WHITE)
+
         screen.blit(lives_text, (10, 10))
         screen.blit(balls_text, (10, 35))
+        screen.blit(pause_hint, (10, 60))
         screen.blit(diff_text,  (WIDTH - diff_text.get_width() - 10, 10))
+
+        # If paused, draw overlay text
+        if paused:
+            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 150))  # semi-transparent dark layer
+            screen.blit(overlay, (0, 0))
+
+            pause_text = title_font.render("PAUSED", True, YELLOW)
+            hint_text  = menu_font.render("Press P to resume", True, WHITE)
+            menu_text  = menu_font.render("Press M for Main Menu", True, WHITE)
+            screen.blit(pause_text, (WIDTH // 2 - pause_text.get_width() // 2,
+                                     HEIGHT // 2 - 80))
+            screen.blit(hint_text, (WIDTH // 2 - hint_text.get_width() // 2,
+                                    HEIGHT // 2 + 10))
+            screen.blit(menu_text, (WIDTH // 2 - menu_text.get_width() // 2,
+                                    HEIGHT // 2 + 60))
 
         pygame.display.flip()
         clock.tick(60)
+
 
 
 # --------------------------------------------------
