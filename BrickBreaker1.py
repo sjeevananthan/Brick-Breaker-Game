@@ -11,13 +11,13 @@ import pygame, sys, math, random
 pygame.init()
 pygame.font.init()
 
-# Screen setup
+# Setup the screen
 WIDTH, HEIGHT = 1000, 800
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Brick Breaker")
 clock = pygame.time.Clock()
 
-# Colors
+# Set color values
 WHITE      = (255, 255, 255)
 LIGHT_BLUE = (120, 200, 255)
 DARK_BLUE  = (30, 60, 120)
@@ -28,14 +28,14 @@ GREEN      = (100, 255, 100)
 ORANGE     = (255, 165, 0)
 BLACK      = (0, 0, 0)
 
-# Fonts
+# Set fonts
 title_font = pygame.font.SysFont("Comic Sans MS", 72, bold=True)
 menu_font  = pygame.font.SysFont("Comic Sans MS", 36, bold=True)
 small_font = pygame.font.SysFont("Comic Sans MS", 22)
 
-# --------------------------------------------------
-# Classes
-# --------------------------------------------------
+# --------------------------------------------------Classes
+
+
 class Paddle:
     def __init__(self, x, y, width, height, speed, color):
         self.x = x
@@ -77,11 +77,10 @@ class Ball:
             self.speed_y *= -1
 
     def bounce_paddle(self, paddle):
-        # previous position
         prev_x = self.x - self.speed_x
         prev_y = self.y - self.speed_y
 
-        # overlap check using ball radius (so edges count)
+        # overlap check using ball radius in order for the edges to count
         overlapping_now = (
             self.x + self.radius >= paddle.x and
             self.x - self.radius <= paddle.x + paddle.width and
@@ -92,15 +91,21 @@ class Ball:
         if overlapping_now:
             came_from_above = prev_y + self.radius <= paddle.y
             if came_from_above:
-                # place ball just above paddle to avoid sticking
+                # places the ball just above paddle to avoid sticking
                 self.y = paddle.y - self.radius
                 self.speed_y = -abs(self.speed_y)
 
                 # angle based on where it hits the paddle
+                # ball Physics
                 paddle_center = paddle.x + paddle.width / 2
                 distance_from_center = self.x - paddle_center
                 normalized = distance_from_center / (paddle.width / 2)  # -1 .. 1
                 self.speed_x += normalized * 1.5  # tweak if too strong
+                self.speed_x += normalized * 1.5
+
+        # clamps the speed so it doesnt get out of control
+        self.clamp_speed()
+
 
     def draw(self):
         pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
@@ -114,13 +119,12 @@ class Ball:
             if not brick.visible:
                 continue
 
-            # AABB overlap between ball (circle approximated as box) and brick
+            # AABB overlap between ball and brick
             if (self.x + self.radius > brick.x and
                 self.x - self.radius < brick.x + brick.width and
                 self.y + self.radius > brick.y and
                 self.y - self.radius < brick.y + brick.height):
 
-                # where did we come from?
                 hit_from_top    = prev_y + self.radius <= brick.y
                 hit_from_bottom = prev_y - self.radius >= brick.y + brick.height
                 hit_from_left   = prev_x + self.radius <= brick.x
@@ -131,12 +135,11 @@ class Ball:
                 elif hit_from_left or hit_from_right:
                     self.speed_x *= -1
                 else:
-                    # ambiguous -> flip vertical as fallback
                     self.speed_y *= -1
 
                 brick.visible = False
 
-                # 15% chance to spawn a power-up (expand, shrink, life, multiball)
+                # 15% chance to spawn a power-up 
                 if random.random() < 0.15:
                     ptype = random.choice(["expand", "shrink", "life", "multiball"])
                     powerups.append(
@@ -145,6 +148,16 @@ class Ball:
                                 ptype)
                     )
                 break  # only handle one brick per frame
+                
+    def clamp_speed(self, max_speed=9):
+        
+        # limit the magnitude of the velocity vector
+        mag = math.hypot(self.speed_x, self.speed_y)
+        if mag > max_speed:
+            scale = max_speed / mag
+            self.speed_x *= scale
+            self.speed_y *= scale
+
 
 
 class Brick:
@@ -187,10 +200,11 @@ class PowerUp:
              self.y - self.height // 2,
              self.width, self.height)
         )
-        # Letter so you know what it is
+        
+        # designs the power up by giving it a corresponding letter
         label = {
             "expand":    "E",
-            "shrink":    "P",   # paddle shrink
+            "shrink":    "P",
             "life":      "L",
             "multiball": "M"
         }[self.ptype]
@@ -203,7 +217,7 @@ class PowerUp:
             paddle.width = min(paddle.width + 30, 260)
 
         elif self.ptype == "shrink":
-            # make the paddle smaller, but not too tiny
+            #shrinks the paddle
             paddle.width = max(paddle.width - 30, 60)
 
         elif self.ptype == "life":
@@ -220,9 +234,8 @@ class PowerUp:
         return lives
 
 
-# --------------------------------------------------
-# Helper functions
-# --------------------------------------------------
+# --------------------------------------------------Helper functions
+
 def create_bricks(rows, cols):
     bricks = []
     brick_w = WIDTH // cols - 10
@@ -247,9 +260,8 @@ def draw_gradient_background():
         pygame.draw.line(screen, (r, g, b), (0, i), (WIDTH, i))
 
 
-# --------------------------------------------------
-# Menus
-# --------------------------------------------------
+# --------------------------------------------------Menus
+
 def main_menu():
     """Main menu: basic entry screen."""
     t = 0
@@ -325,7 +337,7 @@ def difficulty_menu():
                 if event.key == pygame.K_3:
                     return "hard"
                 if event.key == pygame.K_ESCAPE:
-                    return "easy"  # go back, default to easy
+                    return "easy"
 
 
 def end_screen(result, difficulty):
@@ -371,12 +383,9 @@ def end_screen(result, difficulty):
                     return "quit"
 
 
-# --------------------------------------------------
-# Game loop with difficulty
-# --------------------------------------------------
+# -------------------------------------------------Game loop with difficulty
 
 def play_game(difficulty):
-    # Configure settings based on difficulty
     if difficulty == "easy":
         rows, cols   = 5, 8
         ball_speed   = 4
@@ -400,7 +409,7 @@ def play_game(difficulty):
     bricks = create_bricks(rows, cols)
     powerups = []
     lives = 3
-    paused = False   # pause flag
+    paused = False   # pause 
 
     while True:
         for event in pygame.event.get():
@@ -409,13 +418,22 @@ def play_game(difficulty):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_p:
                     paused = not paused           # toggle pause
-                # NEW: from pause, go back to main menu
+
                 if paused and event.key == pygame.K_m:
                     return "menu"
 
+                if event.key == pygame.K_b and not paused:
+                    new_balls = []
+                    for b in balls:
+
+                        nb = Ball(b.x, b.y, b.radius, b.color,
+                                  -b.speed_x, b.speed_y)
+                        new_balls.append(nb)
+                    balls.extend(new_balls)
+
+
         keys = pygame.key.get_pressed()
 
-        # ---------- UPDATE GAME ONLY IF NOT PAUSED ----------
         if not paused:
             paddle.move(keys)
 
@@ -456,7 +474,6 @@ def play_game(difficulty):
             if all(not b.visible for b in bricks):
                 return "win"
 
-        # ---------- DRAW (ALWAYS, EVEN WHEN PAUSED) ----------
         draw_gradient_background()
         for b in bricks:
             b.draw()
@@ -477,7 +494,7 @@ def play_game(difficulty):
         screen.blit(pause_hint, (10, 60))
         screen.blit(diff_text,  (WIDTH - diff_text.get_width() - 10, 10))
 
-        # If paused, draw overlay text
+        # If paused this draws overlay text
         if paused:
             overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 150))  # semi-transparent dark layer
@@ -498,14 +515,13 @@ def play_game(difficulty):
 
 
 
-# --------------------------------------------------
-# Main loop
-# --------------------------------------------------
+# --------------------------------------------------Main loop
+
 while True:
     difficulty = main_menu()
     while True:
-        result = play_game(difficulty)          # "win" or "lose"
-        action = end_screen(result, difficulty) # "retry", "menu", or "quit"
+        result = play_game(difficulty)          # win or lose
+        action = end_screen(result, difficulty) # retry menu and quit
 
         if action == "retry":
             continue          # play again with same difficulty
