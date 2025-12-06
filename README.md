@@ -60,8 +60,9 @@ Fully functional game with:
 Future Improvements:
 
 Sound effects
-
 Brick destruction animations
 High-score tracking
 
+<img width="1498" height="1248" alt="image" src="https://github.com/user-attachments/assets/c7b8b606-1c24-4147-bd64-f3b252bae08a" />
+<img width="1495" height="1247" alt="image" src="https://github.com/user-attachments/assets/6550d5a6-e014-47cf-b9fb-225c91350f56" />
 
